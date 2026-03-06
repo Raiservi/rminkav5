@@ -1,11 +1,11 @@
 Package: rminkav5
 Type: Package
-Title: What the Package Does (Title Case)
+Title: GET ACCES TO DATA STORE IN MINKA THROUGH THE API
 Version: 0.1.0
 Author: Ramon Servitje
-Maintainer: The package maintainer <rservitje25@gmail.com>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Maintainer: Ramon Servitje <rservitje25@gmail.com>
+Description: Get directly access the data stored in Minka to be able to process 
+them with R through the API
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
