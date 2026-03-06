@@ -5,7 +5,7 @@ Version: 0.1.0
 Author: Ramon Servitje
 Maintainer: Ramon Servitje <rservitje25@gmail.com>
 Description: Get directly access the data stored in Minka to be able to process 
-them with R through the API
+    them with R through the API
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
