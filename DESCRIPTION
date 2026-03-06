@@ -6,7 +6,7 @@ Author: Ramon Servitje
 Maintainer: The package maintainer <rservitje25@gmail.com>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
-License: MIT + file LICENSE
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
