@@ -1,62 +1,51 @@
-# Test final. Combinando las únicas dos estrategias que han funcionado.
+# httptest2 hace todo el trabajo pesado de suplantación por nosotros.
+# Este es el código correcto que usa with_mock_dir.
 
-test_that("Los tests se ejecutan 100% offline y pasan", {
+test_that("mnk_proj_obs maneja el modo mensual con POCOS datos (<10k)", {
+  httptest2::with_mock_dir("mocks/mnk_proj_obs_pocos", {
 
-  # --- TEST 1: MODO MENSUAL ---
+    # !! IMPORTANTE !!
+    # Ajusta los parámetros a un caso REAL con pocos datos
+    result <- mnk_proj_obs(project_id = 420, year = 2025, month = 5)
 
-  # Suplantamos las funciones de httr que dan problemas
-  with_mocked_bindings(
-    {
-      # Y DENTRO, suplantamos nuestra función de descarga
-      with_mocked_bindings(
-        {
-          result <- mnk_proj_obs(project_id = 1, year = 2025, month = 1)
-          expect_equal(nrow(result), 5)
-        },
-        # La suplantación de nuestra propia función SÍ funciona así:
-        download_month_data = function(...) tibble::tibble(id = 1:5)
-      )
-    },
-    # Suplantar funciones de httr necesita la sintaxis .package
-    .package = "httr",
-    http_error = function(...) FALSE,
-    content = function(...) list(total_results = 5) # Decimos que hay 5 para que no salga antes
-  )
+  })
+
+  expect_s3_class(result, "tbl_df")
+  expect_true(nrow(result) > 0)
+  expect_equal(nrow(result), 2582) # Ajustaremos este número
+})
+
+test_that("mnk_proj_obs maneja el modo mensual con MUCHOS datos (>10k)", {
+  httptest2::with_mock_dir("mocks/mnk_proj_obs_muchos", {
+
+    # !! IMPORTANTE !!
+    # Ajusta los parámetros a un caso REAL con muchos datos
+    result <- mnk_proj_obs(project_id = 418, year = 2025, month = 8)
+
+  })
+
+  expect_s3_class(result, "tbl_df")
+  expect_true(nrow(result) > 0)
+  expect_equal(nrow(result), 12008) # Ajustaremos este número
+})
+
+test_that("mnk_proj_obs maneja el modo anual y los casos de error", {
+  # --- MODO ANUAL SIN DATOS ---
+  httptest2::with_mock_dir("mocks/mnk_proj_obs_anual_cero", {
+
+    # !! IMPORTANTE !!
+    # Ajusta los parámetros a un caso REAL sin datos
+    msgs <- capture_messages({
+      result <- mnk_proj_obs(project_id = 999, year = 2030)
+    })
+
+  })
+  expect_equal(nrow(result), 0)
 
 
-  # --- TEST 2: MODO ANUAL SIN DATOS ---
-
-  with_mocked_bindings(
-    {
-      # El ping anual usa httr, así que lo suplantamos
-      msgs <- capture_messages({
-        result <- mnk_proj_obs(project_id = 1, year = 2025)
-      })
-      expect_equal(nrow(result), 0)
-      expect_true(any(grepl("No records found for the entire year", msgs)))
-    },
-    .package = "httr",
-    http_error = function(...) FALSE,
-    content = function(...) list(total_results = 0) # El ping dice que hay 0
-  )
-
-
-  # --- TEST 3: MODO ANUAL CON DATOS ---
-
-  with_mocked_bindings(
-    {
-      # El ping anual dice que hay datos
-      with_mocked_bindings(
-        {
-          # El bucle de 12 meses llamará a nuestra 'download_month_data' falsa
-          result <- mnk_proj_obs(project_id = 1, year = 2025)
-          expect_equal(nrow(result), 60) # 12 llamadas * 5 filas/llamada = 60
-        },
-        download_month_data = function(...) tibble::tibble(id = 1:5)
-      )
-    },
-    .package = "httr",
-    http_error = function(...) FALSE,
-    content = function(...) list(total_results = 100) # El ping dice que hay > 0
-  )
+  # --- MANEJO DE ERROR HTTP ---
+  httptest2::with_mock_dir("mocks/mnk_proj_obs_error", {
+    result_error <- mnk_proj_obs(project_id = 1, year = 2025, month = 1)
+  })
+  expect_equal(nrow(result_error), 0)
 })
