@@ -6,6 +6,8 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/Raiservi/rminkav5/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Raiservi/rminkav5/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/Raiservi/rminkav5/graph/badge.svg)](https://app.codecov.io/gh/Raiservi/rminkav5)
 <!-- badges: end -->
 
 The goal of rminkav5 is to …
@@ -20,35 +22,44 @@ You can install the development version of rminkav5 from
 pak::pak("Raiservi/rminkav5")
 ```
 
-## Example
+## Usage
 
-This is a basic example which shows you how to solve a common problem:
+Minka is a citizen science app built for recording, organizing and
+sharing naturalistic observations of animals and plants. It allows
+anyone to become a researcher and that the observations we make serve
+for scientific use. Minka also allows users to create their own
+projects.
 
-``` r
-library(rminkav5)
-## basic example code
-```
+The link to access Minka’s website is
 
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
+<https://minka-sdg.org/>
 
-``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
-```
+The goals of the `rminka` package are:
 
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this.
+1.  Directly access the data stored in Minka to be able to process them
+    with R through the API.
 
-You can also embed plots, for example:
+2.  Treat the data to be able to use them directly with other packages
+    such as `vegan` or `dismo`.
 
-<img src="man/figures/README-pressure-1.png" width="100%" />
+## Using rminka
 
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.
+If you are new to `rminka` you are better off starting with a starting
+web page of `rminka` in the github page of the project.
+
+1.  The main page directions is [rminka
+    website](https://development-biomarine.github.io/rminkav3/)
+
+2.  The starting web page is [rminka
+    starting](https://development-biomarine.github.io/rminkav3/articles/rminkav3.html)
+
+## Getting help
+
+There are two main places to get help with `rminka`:
+
+1.  The [RStudio community](https://forum.posit.co/) is a friendly place
+    to ask any questions about R.
+
+2.  \[Stack Overflow\]\[so\] is a great source of answers to common R
+    questions. It is also a great place to get help, once you have
+    created a reproducible example that illustrates your problem.
