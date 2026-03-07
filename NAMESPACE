@@ -2,6 +2,7 @@
 
 export("%>%")
 export(mnk_obs_id)
+export(mnk_place_sf)
 export(mnk_places_byname)
 export(mnk_proj_byname)
 export(mnk_proj_info)

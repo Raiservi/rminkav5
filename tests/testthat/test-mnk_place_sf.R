@@ -11,8 +11,9 @@ library(stringr)
 # Asegúrate de que tu función mnk_place_sf esté cargada.
 # source("R/mnk_place_sf.R") # ¡Descomenta si tu paquete no está instalado o cargado!
 
-# --- DEFINICIONES DE MOCKS JSON GLOBALES ---
-# ESTAS DEFINICIONES DEBEN ESTAR FUERA DE CUALQUIER 'test_that' PARA EVITAR PROBLEMAS DE ALCANCE
+# --- DEFINICIONES DE MOCKS JSON GLOBALES (TODAS AL PRINCIPIO DEL ARCHIVO) ---
+# ESTOS SON SOLO STRINGS, PUEDEN ESTAR AQUÍ.
+
 mock_response_json_success_point <- '{
   "total_results": 1,
   "page": 1,
@@ -117,6 +118,7 @@ test_that("mnk_place_sf handles invalid input 'id'", {
 
 # --- Test de éxito: ID válido y respuesta correcta ---
 test_that("mnk_place_sf returns an sf object for a valid ID", {
+  # Definición de la función mock_httr_GET para ESTE test_that
   mock_httr_GET <- function(url = NULL,..., path = NULL, as) {
     id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
 
@@ -150,11 +152,11 @@ test_that("mnk_place_sf returns an sf object for a valid ID", {
 
       expect_s3_class(result_point, "sf")
       expect_equal(nrow(result_point), 1)
-      # CORRECCIÓN: Tu función ELIMINA 'geojson_string' al final, por lo tanto, no esperamos esta columna.
+      # CORRECCIÓN: Tu función ELIMINA 'geojson_string' al final.
       # expect_true("geojson_string" %in% names(result_point)) # Esta línea se comenta o elimina.
+
       expect_equal(sf::st_crs(result_point)$epsg, 4326)
       expect_true(sf::st_is(result_point$sf_geometry, "POINT"))
-      # CORRECCIÓN: sf::st_coordinates devuelve matriz sin nombres.
       expect_equal(as.numeric(sf::st_coordinates(result_point$sf_geometry)), c(2.923, 41.777))
 
       # Test con un Polygon
@@ -168,6 +170,7 @@ test_that("mnk_place_sf returns an sf object for a valid ID", {
 
 # --- Test para no resultados o respuesta vacía de la API ---
 test_that("mnk_place_sf handles no results or empty response from API", {
+  # Definición de la función mock_httr_GET para ESTE test_that
   mock_httr_GET_empty <- function(url = NULL,..., path = NULL, as) {
     id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
 
@@ -222,11 +225,12 @@ test_that("mnk_place_sf handles no results or empty response from API", {
 
 # --- Test para error HTTP de la API (Correcto) ---
 test_that("mnk_place_sf handles API HTTP error", {
+  # Definición de la función mock_httr_GET para ESTE test_that
   mock_httr_GET_error <- function(url = NULL,..., path = NULL, as) {
     id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
 
+    response_content <- ""
     status_code <- 200L # Default
-    response_content <- '' # Default
 
     if (id_from_path == 500) { # Simula un error 500
       status_code <- 500L
@@ -264,6 +268,7 @@ test_that("mnk_place_sf handles API HTTP error", {
 
 # --- Test para GeoJSON malformado ---
 test_that("mnk_place_sf handles malformed GeoJSON or JSON", {
+  # Definición de la función mock_httr_GET para ESTE test_that
   mock_httr_GET_malformed <- function(url = NULL,..., path = NULL, as) {
     id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
     response_content <- ""
@@ -291,7 +296,7 @@ test_that("mnk_place_sf handles malformed GeoJSON or JSON", {
     .package = "httr",
     {
       # Test con GeoJSON con coordenadas mal formadas (sf::st_read fallará)
-      result_malformed_geom <- mnk_place_sf(666)
+      result_malformed_geom <- suppressWarnings(mnk_place_sf(666)) # Añadido suppressWarnings
       expect_s3_class(result_malformed_geom, "sf")
       expect_equal(nrow(result_malformed_geom), 1)
       expect_true(sf::st_is(result_malformed_geom$sf_geometry, "POINT"))

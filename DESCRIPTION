@@ -1,12 +1,12 @@
 Package: rminkav5
 Type: Package
-Title: GET ACCES TO DATA STORE IN MINKA THROUGH THE API
+Title: GET DIRECT ACCES TO MINKA DATA
 Version: 0.1.0
 Author: Ramon Servitje
 Maintainer: Ramon Servitje <rservitje25@gmail.com>
-Description: Get directly access the data stored in Minka to be able to process 
-    them with R through the API
-License: GPL (>= 3)
+Description: Get direct access to the data stored in Minka, 
+    allowing you to process them with R through the API.
+License: GPL (>= 3) + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports: 

@@ -67,5 +67,4 @@ There are two main places to get help with `rminka`:
     created a reproducible example that illustrates your problem.
 
 [community]: https://forum.posit.co/
-
-
+[so]: https://stackoverflow.com/

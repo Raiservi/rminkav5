@@ -62,6 +62,7 @@ There are two main places to get help with `rminka`:
 1.  The [RStudio community](https://forum.posit.co/) is a friendly place
     to ask any questions about R.
 
-2.  \[Stack Overflow\]\[so\] is a great source of answers to common R
-    questions. It is also a great place to get help, once you have
-    created a reproducible example that illustrates your problem.
+2.  [Stack Overflow](https://stackoverflow.com/) is a great source of
+    answers to common R questions. It is also a great place to get help,
+    once you have created a reproducible example that illustrates your
+    problem.

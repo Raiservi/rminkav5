@@ -2,19 +2,20 @@
 % Please edit documentation in R/mnk_places_byname.R
 \name{mnk_places_byname}
 \alias{mnk_places_byname}
-\title{mnk_place_byname
+\title{Get information about Minka place by name
 Get information about Minka place by name}
 \usage{
 mnk_places_byname(query)
 }
 \arguments{
-\item{query}{A single id for a Minka observation record}
+\item{query}{A string that is contained in the project name}
 }
 \value{
-A tibble with all details on a given record
+A tibble with all the Minka places that contain the string with
+some details of those projects
 }
 \description{
-Get information about Minka place by name
+Get information about Minka place by part of the place name
 }
 \examples{
 \dontrun{

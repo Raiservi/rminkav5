@@ -1,8 +1,9 @@
-#' @title mnk_place_byname
+#' @title Get information about Minka place by name
 #' Get information about Minka place by name
-#' @description Get information about Minka place by name
-#' @param query A single id for a Minka observation record
-#' @return A tibble with all details on a given record
+#' @description Get information about Minka place by part of the place name
+#' @param query A string that is contained in the project name
+#' @return A tibble with all the Minka places that contain the string with
+#' some details of those projects
 #' @examples \dontrun{
 #' sant_feliu <- mnk_places_byname(query="Sant Feliu")
 #' }
@@ -48,8 +49,8 @@ mnk_places_byname <- function(query) {
       name = x$name,
       display_name = x$display_name,
       location_latitud = location_parts[1],
-      location_longitud = location_parts[2],
-      geojson_string = as.character(jsonlite::toJSON(x$geometry_geojson, auto_unbox = TRUE))
+      location_longitud = location_parts[2]
+
     )
   })
 
@@ -59,29 +60,7 @@ mnk_places_byname <- function(query) {
   }
   # --- FIN DE LA MODIFICACIÓN ---
 
-  sf_object <- tibble::as_tibble(final_tibble) %>%
-    dplyr::mutate(
-      sf_geometry = purrr::map(geojson_string, function(raw_string) {
-
-        cleaned_string <- stringr::str_replace_all(raw_string, "\\\\", "")
-        cleaned_string <- sub('^"', '', cleaned_string)
-        cleaned_string <- sub('"$', '', cleaned_string)
-
-        sf_geom <- tryCatch({
-
-          sf::st_geometry(sf::st_read(cleaned_string, quiet = TRUE))[[1]]
-
-        }, error = function(e) {
-          sf::st_point()
-        })
-
-        return(sf_geom)
-      })
-    ) %>%
-    dplyr::select(-geojson_string) %>%
-    sf::st_as_sf(sf_column_name = "sf_geometry", crs = 4326)
-
-  return(sf_object)
+  return(final_tibble)
 }
 
 #  library(httr)
@@ -93,17 +72,10 @@ mnk_places_byname <- function(query) {
 # #
 #
 #
-#  s <-get_minka_places_byname("masia blanca")
-# #
-#  View(s)
-# #
-#  geom <-s[1,]
-# #
-# View(geom)
+#  e <-mnk_places_byname("sant feliu")
 #
 #
-# geom
-#
+# #
 # sf::st_polygon(geom)
 #
 # cat(geojson)
