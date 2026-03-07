@@ -2,132 +2,168 @@ library(testthat)
 library(mockery) # Para with_mocked_bindings
 library(httr)
 library(jsonlite)
-library(sf)
-library(dplyr)
 library(purrr)
+library(dplyr)
 library(tibble)
 library(stringr)
 
-# Asegúrate de que tu función mnk_place_sf esté cargada.
-# source("R/mnk_place_sf.R") # ¡Descomenta si tu paquete no está instalado o cargado!
+# Asegúrate de que tu función mnk_places_byname esté cargada.
+# source("R/mnk_places_byname.R") # ¡Descomenta si tu paquete no está instalado o cargado!
 
-# --- DEFINICIONES DE MOCKS JSON GLOBALES ---
-# ESTAS DEFINICIONES DEBEN ESTAR FUERA DE CUALQUIER 'test_that' PARA EVITAR PROBLEMAS DE ALCANCE
-mock_response_json_success_point <- '{
-  "total_results": 1,
-  "page": 1,
-  "per_page": 1,
+# --- DEFINICIONES DE MOCKS JSON GLOBALES PARA mnk_places_byname ---
+# Estas definiciones están fuera de cualquier 'test_that' para asegurar su alcance.
+
+mock_response_json_success_multiple <- '{
   "results": [
     {
-      "ancestor_place_ids": null,
-      "bounding_box_geojson": { "type": "Polygon", "coordinates": [[[2.9828202716,41.7263143087],[2.9828202716,41.7923486579],[3.0631033079,41.7923486579],[3.0631033079,41.7263143087],[2.9828202716,41.7263143087]]] },
-      "bbox_area": 0.0053,
-      "admin_level": null,
-      "place_type": null,
-      "name": "Area marina Sant Feliu",
-      "location": "41.7597741479,3.0226481505",
-      "id": 265,
-      "display_name": "Area marina Sant Feliu",
-      "uuid": "ee1ecbbf-2ae7-4551-b053-35eb5bb9f31e",
+      "id": "123",
       "slug": "area-marina-sant-feliu",
-      "geometry_geojson": {
-        "coordinates": [2.923, 41.777],
-        "type": "Point"
-      }
+      "name": "Area marina Sant Feliu",
+      "display_name": "Area marina Sant Feliu de Guíxols",
+      "location": "41.7597741479,3.0226481505",
+      "bbox_area": 0.005301438053870476
+    },
+    {
+      "id": "456",
+      "slug": "otra-area",
+      "name": "Otra Area",
+      "display_name": "Otra Area en alguna parte",
+      "location": "40.00,2.00",
+      "bbox_area": 0.01
     }
   ]
 }'
 
-mock_response_json_success_polygon <- '{
-  "total_results": 1,
-  "page": 1,
-  "per_page": 1,
+mock_response_json_success_single <- '{
   "results": [
     {
-      "ancestor_place_ids": null,
-      "bounding_box_geojson": { "type": "Polygon", "coordinates": [[[0,0], [0,1], [1,1], [1,0], [0,0]]] },
-      "bbox_area": 0.0053,
-      "admin_level": null,
-      "place_type": null,
-      "name": "Parque Natural XYZ",
-      "location": "10.0,10.0",
-      "id": 456,
-      "display_name": "Parque Natural XYZ",
-      "uuid": "some-uuid",
-      "slug": "parque-natural-xyz",
-      "geometry_geojson": {
-        "type": "Polygon",
-        "coordinates": [[[0,0], [0,1], [1,1], [1,0], [0,0]]]
-      }
+      "id": "100",
+      "slug": "single-place",
+      "name": "Single Place",
+      "display_name": "Just one place here",
+      "location": "30.00,1.00",
+      "bbox_area": 0.0075
     }
   ]
 }'
 
-mock_response_json_empty_results <- '{
-  "total_results": 0,
-  "page": 1,
-  "per_page": 1,
-  "results": []
-}'
+# JSON para malformado que producirá un error real de jsonlite::fromJSON
+mock_response_json_malformed_for_parsing <- '{"error": "bad json", "results": [' # Corchete sin cerrar
 
-mock_response_json_no_results_key <- '{"some_other_key": "some_value", "total_results": 0}'
+mock_response_json_no_results_key <- '{"some_other_key": "some_value"}' # JSON válido pero sin la clave 'results'
+mock_response_json_empty_results <- '{"results": []}' # JSON con 'results' vacío
 
-mock_response_json_results_no_geom <- '{
-  "total_results": 1,
-  "page": 1,
-  "per_page": 1,
-  "results": [
-    {
-      "id": 888,
-      "slug": "place-no-geom",
-      "name": "Place without geometry in results",
-      "location": "10.0,10.0"
-      // geometry_geojson falta intencionadamente
-    }
-  ]
-}'
-
-mock_response_malformed_geojson_coords <- '{
-  "total_results": 1,
-  "page": 1,
-  "per_page": 1,
-  "results": [
-    {
-      "id": 666,
-      "slug": "malformed-geom-coords",
-      "name": "Malformed Geometry Place Coords",
-      "location": "1.0,1.0",
-      "geometry_geojson": {
-        "type": "Point",
-        "coordinates": ["invalid", "data"]
-      }
-    }
-  ]
-}'
-
-mock_response_completely_malformed_json <- '{"total_results": 1, "results": [ {"id": 777, "geometry_geojson": {"type": "Point", "coordinates": [0,0]}'
-
-# --- Test para IDs no válidos en la entrada de la función (Correcto) ---
-test_that("mnk_place_sf handles invalid input 'id'", {
-  expect_error(mnk_place_sf(NULL), "You must provide a single non-empty numerical 'id'.")
-  expect_error(mnk_place_sf("abc"), "You must provide a single non-empty numerical 'id'.")
-  expect_error(mnk_place_sf(c(1, 2)), "You must provide a single non-empty numerical 'id'.")
-  expect_error(mnk_place_sf(NA_real_), "You must provide a single non-empty numerical 'id'.")
+# --- Test para argumentos inválidos ---
+test_that("mnk_places_byname throws error for invalid query", {
+  expect_error(mnk_places_byname(NULL), "You must provide a non-empty 'query' string.")
+  expect_error(mnk_places_byname(""), "You must provide a non-empty 'query' string.")
+  # El error debe coincidir con el que lanza mnk_places_byname para una entrada numérica
+  expect_error(mnk_places_byname(123), "You must provide a non-empty 'query' string.")
+  expect_error(mnk_places_byname(" "), "You must provide a non-empty 'query' string.")
 })
 
-# --- Test de éxito: ID válido y respuesta correcta ---
-test_that("mnk_place_sf returns an sf object for a valid ID", {
+# --- Test de éxito: Query válida y respuesta correcta ---
+test_that("mnk_places_byname returns a tibble for a valid query", {
   mock_httr_GET <- function(url = NULL,..., path = NULL, as) {
-    id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
+    query_param_encoded <- stringr::str_extract(path, "(?<=q=).*")
+    query_param <- URLdecode(query_param_encoded)
 
     response_content <- ""
-    status_code <- 200L
-
-    if (id_from_path == 265) {
-      response_content <- mock_response_json_success_point
-    } else if (id_from_path == 456) {
-      response_content <- mock_response_json_success_polygon
+    if (grepl("Area marina Sant Feliu", query_param, ignore.case = TRUE)) {
+      response_content <- mock_response_json_success_multiple
+    } else if (grepl("Single Place", query_param, ignore.case = TRUE)) {
+      response_content <- mock_response_json_success_single
     } else {
+      response_content <- mock_response_json_empty_results # Fallback para queries no mockeadas
+    }
+
+    response_obj <- structure(list(
+      url = paste0("https://api.minka-sdg.org", path),
+      status_code = 200L,
+      headers = list("Content-Type" = "application/json"),
+      content = charToRaw(response_content)
+    ), class = c("response", "handle"))
+    return(response_obj)
+  }
+
+  with_mocked_bindings(
+    GET = mock_httr_GET,
+    .package = "httr",
+    {
+      result_multiple <- mnk_places_byname("Area marina Sant Feliu")
+      expect_s3_class(result_multiple, "tbl_df")
+      expect_equal(nrow(result_multiple), 2)
+      # Añadido "area" a la comprobación de nombres de columnas
+      expect_true(all(c("place_id", "slug", "name", "area", "display_name", "location_latitud", "location_longitud") %in% names(result_multiple)))
+      expect_equal(result_multiple$place_id[1], "123")
+      expect_equal(result_multiple$name[1], "Area marina Sant Feliu")
+      # Ajustado al valor exacto del JSON
+      expect_equal(result_multiple$area[1], 0.005301438053870476)
+      # Ajustado al valor exacto del JSON
+      expect_equal(result_multiple$location_latitud[1], 41.7597741479)
+      expect_equal(result_multiple$location_longitud[1], 3.0226481505)
+
+      result_single <- mnk_places_byname("Single Place")
+      expect_s3_class(result_single, "tbl_df")
+      expect_equal(nrow(result_single), 1)
+      expect_equal(result_single$place_id[1], "100")
+      expect_equal(result_single$location_latitud[1], 30.00)
+      # Ajustado al valor exacto del JSON
+      expect_equal(result_single$area[1], 0.0075)
+    }
+  )
+})
+
+# --- Test para no resultados de la API ---
+test_that("mnk_places_byname handles no results from API", {
+  mock_httr_GET <- function(url = NULL,..., path = NULL, as) {
+    query_param_encoded <- stringr::str_extract(path, "(?<=q=).*")
+    query_param <- URLdecode(query_param_encoded)
+
+    response_content <- ""
+    if (grepl("No existente", query_param, ignore.case = TRUE)) {
+      response_content <- mock_response_json_empty_results
+    } else if (grepl("Empty response", query_param, ignore.case = TRUE)) {
+      response_content <- ""
+    } else {
+      stop("Mock no configurado para esta URL en el test de no resultados: ", path)
+    }
+
+    response_obj <- structure(list(
+      url = paste0("https://api.minka-sdg.org", path),
+      status_code = 200L,
+      headers = list("Content-Type" = "application/json"),
+      content = charToRaw(response_content)
+    ), class = c("response", "handle"))
+    return(response_obj)
+  }
+
+  with_mocked_bindings(
+    GET = mock_httr_GET,
+    .package = "httr",
+    {
+      expect_message(result <- mnk_places_byname("No existente"), "No places found for your query.")
+      expect_null(result)
+
+      expect_message(result_empty_content <- mnk_places_byname("Empty response"), "API returned an empty response.")
+      expect_null(result_empty_content)
+    }
+  )
+})
+
+# --- Test para error HTTP de la API ---
+test_that("mnk_places_byname handles API HTTP error", {
+  mock_httr_GET <- function(url = NULL,..., path = NULL, as) {
+    query_param_encoded <- stringr::str_extract(path, "(?<=q=).*")
+    query_param <- URLdecode(query_param_encoded)
+
+    status_code <- 200L
+    response_content <- mock_response_json_empty_results # Default
+
+    if (grepl("error_query_500", query_param, ignore.case = TRUE)) {
+      status_code <- 500L
+      response_content <- '{"error": "internal server error"}'
+    } else if (grepl("error_query_404", query_param, ignore.case = TRUE)) {
       status_code <- 404L
       response_content <- '{"error": "Not Found"}'
     }
@@ -145,136 +181,56 @@ test_that("mnk_place_sf returns an sf object for a valid ID", {
     GET = mock_httr_GET,
     .package = "httr",
     {
-      # Test con un Point (ID 265, de tu ejemplo)
-      result_point <- mnk_place_sf(265)
-
-      expect_s3_class(result_point, "sf")
-      expect_equal(nrow(result_point), 1)
-      # CORRECCIÓN: Tu función ELIMINA 'geojson_string' al final, por lo tanto, no esperamos esta columna.
-      # expect_true("geojson_string" %in% names(result_point)) # Esta línea se comenta o elimina.
-      expect_equal(sf::st_crs(result_point)$epsg, 4326)
-      expect_true(sf::st_is(result_point$sf_geometry, "POINT"))
-      # CORRECCIÓN: sf::st_coordinates devuelve matriz sin nombres.
-      expect_equal(as.numeric(sf::st_coordinates(result_point$sf_geometry)), c(2.923, 41.777))
-
-      # Test con un Polygon
-      result_polygon <- mnk_place_sf(456)
-      expect_s3_class(result_polygon, "sf")
-      expect_equal(nrow(result_polygon), 1)
-      expect_true(sf::st_is(result_polygon$sf_geometry, "POLYGON"))
-    }
-  )
-})
-
-# --- Test para no resultados o respuesta vacía de la API ---
-test_that("mnk_place_sf handles no results or empty response from API", {
-  mock_httr_GET_empty <- function(url = NULL,..., path = NULL, as) {
-    id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
-
-    response_content <- ""
-    status_code <- 200L
-    if (id_from_path == 999) { # ID que devuelve string vacío (ej. 200 OK pero sin contenido)
-      response_content <- ""
-    } else if (id_from_path == 888) { # ID que devuelve JSON con 'results': []
-      response_content <- mock_response_json_empty_results
-    } else if (id_from_path == 777) { # ID que devuelve JSON sin la clave 'results'
-      response_content <- mock_response_json_no_results_key
-    } else if (id_from_path == 666) { # ID que devuelve JSON con 'results' pero un elemento sin geometry_geojson
-      response_content <- mock_response_json_results_no_geom
-    } else {
-      stop("Mock no configurado para esta URL en el test de no resultados: ", path)
-    }
-
-    response_obj <- structure(list(
-      url = paste0("https://api.minka-sdg.org", path),
-      status_code = status_code,
-      headers = list("Content-Type" = "application/json"),
-      content = charToRaw(response_content)
-    ), class = c("response", "handle"))
-    return(response_obj)
-  }
-
-  with_mocked_bindings(
-    GET = mock_httr_GET_empty,
-    .package = "httr",
-    {
-      # Test con respuesta HTTP 200 pero contenido vacío
-      expect_message(result_empty_content <- mnk_place_sf(999), "API returned an empty response.")
-      expect_null(result_empty_content)
-
-      # Test con JSON '{"results": []}'
-      expect_message(result_empty_results <- mnk_place_sf(888), "No places found for your query.")
-      expect_null(result_empty_results)
-
-      # Test con JSON sin la clave 'results'
-      expect_message(result_no_results_key <- mnk_place_sf(777), "No places found for your query.")
-      expect_null(result_no_results_key)
-
-      # Test con JSON con 'results' pero un elemento sin 'geometry_geojson'
-      result_no_geom_in_results <- mnk_place_sf(666)
-      expect_s3_class(result_no_geom_in_results, "sf")
-      expect_equal(nrow(result_no_geom_in_results), 1)
-      expect_true(sf::st_is(result_no_geom_in_results$sf_geometry, "POINT"))
-      expect_true(sf::st_is_empty(result_no_geom_in_results$sf_geometry))
-    }
-  )
-})
-
-# --- Test para error HTTP de la API (Correcto) ---
-test_that("mnk_place_sf handles API HTTP error", {
-  mock_httr_GET_error <- function(url = NULL,..., path = NULL, as) {
-    id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
-
-    status_code <- 200L # Default
-    response_content <- '' # Default
-
-    if (id_from_path == 500) { # Simula un error 500
-      status_code <- 500L
-      response_content <- '{"error": "internal server error"}'
-    } else if (id_from_path == 404) { # Simula un error 404
-      status_code <- 404L
-      response_content <- '{"error": "Not Found"}'
-    } else {
-      stop("Mock no configurado para esta URL en el test de error HTTP: ", path)
-    }
-
-    response_obj <- structure(list(
-      url = paste0("https://api.minka-sdg.org", path),
-      status_code = status_code,
-      headers = list("Content-Type" = "application/json"),
-      content = charToRaw(response_content)
-    ), class = c("response", "handle"))
-    return(response_obj)
-  }
-
-  with_mocked_bindings(
-    GET = mock_httr_GET_error,
-    .package = "httr",
-    {
-      # Test con error 500
-      expect_message(result_500 <- mnk_place_sf(500), regexp = "Minka API request failed. Status code: 500")
+      expect_message(result_500 <- mnk_places_byname("error_query_500"), regexp = "Minka API request failed. Status code: 500")
       expect_null(result_500)
 
-      # Test con error 404
-      expect_message(result_404 <- mnk_place_sf(404), regexp = "Minka API request failed. Status code: 404")
+      expect_message(result_404 <- mnk_places_byname("error_query_404"), regexp = "Minka API request failed. Status code: 404")
       expect_null(result_404)
     }
   )
 })
 
-# --- Test para GeoJSON malformado ---
-test_that("mnk_place_sf handles malformed GeoJSON or JSON", {
-  mock_httr_GET_malformed <- function(url = NULL,..., path = NULL, as) {
-    id_from_path <- as.numeric(stringr::str_extract(path, "[0-9]+$"))
+# --- Test para respuesta JSON malformada o sin 'results' ---
+test_that("mnk_places_byname handles malformed JSON or missing 'results' key", {
+  mock_httr_GET <- function(url = NULL,..., path = NULL, as) {
+    query_param_encoded <- stringr::str_extract(path, "(?<=q=).*")
+    query_param <- URLdecode(query_param_encoded)
+
     response_content <- ""
     status_code <- 200L
 
-    if (id_from_path == 666) {
-      response_content <- mock_response_malformed_geojson_coords
-    } else if (id_from_path == 777) {
-      response_content <- mock_response_completely_malformed_json
+    if (grepl("Malformed JSON", query_param, ignore.case = TRUE)) {
+      response_content <- mock_response_json_malformed_for_parsing
+    } else if (grepl("No results key", query_param, ignore.case = TRUE)) {
+      response_content <- mock_response_json_no_results_key
+    } else if (grepl("Malformed location", query_param, ignore.case = TRUE)) {
+      response_content <- '{
+        "results": [
+          {
+            "id": "999",
+            "slug": "malformed-location",
+            "name": "Malformed Location Place",
+            "display_name": "Place with bad location",
+            "location": "invalid_coords",
+            "bbox_area": 0.0
+          }
+        ]
+      }'
+    } else if (grepl("Location no numeric", query_param, ignore.case = TRUE)) {
+      response_content <- '{
+        "results": [
+          {
+            "id": "888",
+            "slug": "location-non-numeric",
+            "name": "Location Non-Numeric",
+            "display_name": "Place with non-numeric location",
+            "location": "41.78,abc",
+            "bbox_area": 0.0
+          }
+        ]
+      }'
     } else {
-      stop("Mock no configurado para esta URL en el test de GeoJSON malformado: ", path)
+      stop("Mock no configurado para esta URL en el test de malformado: ", path)
     }
 
     response_obj <- structure(list(
@@ -287,18 +243,19 @@ test_that("mnk_place_sf handles malformed GeoJSON or JSON", {
   }
 
   with_mocked_bindings(
-    GET = mock_httr_GET_malformed,
+    GET = mock_httr_GET,
     .package = "httr",
     {
-      # Test con GeoJSON con coordenadas mal formadas (sf::st_read fallará)
-      result_malformed_geom <- mnk_place_sf(666)
-      expect_s3_class(result_malformed_geom, "sf")
-      expect_equal(nrow(result_malformed_geom), 1)
-      expect_true(sf::st_is(result_malformed_geom$sf_geometry, "POINT"))
-      expect_true(sf::st_is_empty(result_malformed_geom$sf_geometry))
+      expect_error(mnk_places_byname("Malformed JSON"), regexp = "lexical error|syntax error|unallowed token|premature EOF", class = "error")
 
-      # Test con JSON completamente malformado (jsonlite::fromJSON fallará)
-      expect_error(mnk_place_sf(777), regexp = "lexical error|syntax error|unallowed token|premature EOF", class = "error")
+      expect_message(result <- mnk_places_byname("No results key"), "No places found for your query.")
+      expect_null(result)
+
+      # Ahora esperamos el mensaje de error que lanzas explícitamente desde la función
+      expect_error(suppressWarnings(mnk_places_byname("Malformed location")), regexp = "Invalid 'location' format received from API", class = "error")
+
+      # Ahora esperamos el mensaje de error que lanzas explícitamente desde la función
+      expect_error(suppressWarnings(mnk_places_byname("Location no numeric")), regexp = "Invalid 'location' format received from API", class = "error")
     }
   )
 })

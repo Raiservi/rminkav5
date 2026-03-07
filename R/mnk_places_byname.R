@@ -30,7 +30,6 @@ mnk_places_byname <- function(query) {
     return(invisible(NULL))
   }
 
-  # --- MODIFICACIÓN AQUÍ: Usar jsonlite directamente ---
   parsed_json <- jsonlite::fromJSON(response_content, simplifyVector = FALSE)
 
   if (is.null(parsed_json$results) || length(parsed_json$results) == 0) {
@@ -43,10 +42,15 @@ mnk_places_byname <- function(query) {
     # Dividir la ubicación y convertir a numérico
     location_parts <- as.numeric(strsplit(x$location, ",")[[1]])
 
+    if (any(is.na(location_parts)) || length(location_parts)!= 2) {
+      stop("Invalid 'location' format received from API: '", x$location,
+           "'. Expected 'lat,long'.")}
+
     tibble::tibble(
       place_id = x$id,
       slug = x$slug,
       name = x$name,
+      area = x$bbox_area,
       display_name = x$display_name,
       location_latitud = location_parts[1],
       location_longitud = location_parts[2]
@@ -58,34 +62,8 @@ mnk_places_byname <- function(query) {
     message("No places found for your query.")
     return(invisible(NULL))
   }
-  # --- FIN DE LA MODIFICACIÓN ---
+
 
   return(final_tibble)
 }
 
-#  library(httr)
-#  library(jsonlite)
-#  library(dplyr)
-#  library(leaflet)
-#  library(tibble)
-#  library(sf)
-# #
-#
-#
-#  e <-mnk_places_byname("sant feliu")
-#
-#
-# #
-# sf::st_polygon(geom)
-#
-# cat(geojson)
-#
-# js <- stringr::str_replace_all(geojson, "'\'", "")
-
-# cat(js)
-#
-#   mapa_leaflet <- leaflet(geom) %>%
-#      addTiles() %>%
-#     addPolygons()
-# #
-#   print (mapa_leaflet)

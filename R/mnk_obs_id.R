@@ -1,4 +1,3 @@
-#'
 #' @title mnk_obs_id
 #' Get information on a specific observation by observation id
 #' @description
@@ -12,7 +11,6 @@
 #' }
 #' @importFrom utils read.csv
 #' @export
-#'
 #'
 #'
 mnk_obs_id <- function(id, meta = FALSE) {
@@ -45,33 +43,43 @@ mnk_obs_id <- function(id, meta = FALSE) {
     return(invisible(NULL))
   }
 
-  parsed_json <- jsonlite::fromJSON(response_content)
+  # Intenta parsear el JSON. Si falla, genera un error.
+  # El id_char se pasa directamente al stop en el entorno de la función.
+  parsed_json_full <- tryCatch({
+    jsonlite::fromJSON(response_content, simplifyVector = TRUE, flatten = TRUE)
+  }, error = function(e) {
+    stop("Failed to parse JSON response for observation ID ", id_char, ": ", e$message)
+  })
 
-  if (is.list(parsed_json) && length(parsed_json) == 0) {
-    message("No data found for observation ID ", id_char, ".")
+  # Comprobación inicial si parsed_json_full NO es una lista o data.frame
+  # Esto maneja el caso de un string simple como respuesta JSON, donde fromJSON no devuelve un data.frame/list
+  if (!is.list(parsed_json_full) &&!is.data.frame(parsed_json_full)) {
+    message("No data found or unexpected JSON structure (atomic type) for observation ID ", id_char, ".")
     return(invisible(NULL))
   }
 
-  if (is.list(parsed_json)) {
-    # --- LÓGICA CORREGIDA SIN purrr::map ---
-    # Convertir todos los NULLs en NA para que tibble::as_tibble no falle
-    # Esto lo hacemos iterando con lapply de base R
-    parsed_json_cleaned <- lapply(parsed_json, function(x) {
-      if (is.null(x)) NA else x
-    })
-
-    # Asegurarse de que todos los elementos sean atómicos para as_tibble
-    # y de longitud 1 para formar una fila
-    parsed_json_final <- lapply(parsed_json_cleaned, function(x) {
-      if (length(x) == 0) NA # Si después de NULLs quedan elementos de longitud 0
-      else if (length(x) > 1) list(x) # Si es una lista o vector de >1, lo ponemos en una lista para que tibble lo maneje como una columna de lista
-      else x
-    })
-
-    df_result <- tibble::as_tibble(parsed_json_final)
-    return(df_result)
+  # La API real devuelve { "total_results":..., "results": [{...}] }
+  # Extraer el objeto de observación de 'results'
+  if (!is.null(parsed_json_full$results) && is.data.frame(parsed_json_full$results) && nrow(parsed_json_full$results) > 0) {
+    df_result <- parsed_json_full$results # Esto ya es un data frame
+    if (nrow(df_result) > 1) {
+      warning("Multiple observations found for ID ", id_char, ". Returning only the first one.")
+      df_result <- df_result[1, ]
+    }
+  } else if (is.data.frame(parsed_json_full) && nrow(parsed_json_full) > 0) {
+    # Si la API devuelve directamente el objeto de observación como un data frame sin "results"
+    df_result <- parsed_json_full
   } else {
-    warning("Unexpected JSON structure received for observation ID ", id_char, ". Returning NULL.")
+    # Si no se encuentra data o la estructura es inesperada después del fromJSON
+    message("No data found or unexpected JSON structure for observation ID ", id_char, ".")
     return(invisible(NULL))
   }
+
+  # Si en este punto df_result no es un data.frame o está vacío (muy improbable con las comprobaciones anteriores, pero para seguridad)
+  if (!is.data.frame(df_result) || nrow(df_result) == 0) {
+    message("No data found or unexpected JSON structure for observation ID ", id_char, ".")
+    return(invisible(NULL))
+  }
+
+  return(tibble::as_tibble(df_result)) # Asegurarse de que el resultado sea un tibble
 }
