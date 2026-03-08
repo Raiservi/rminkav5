@@ -16,12 +16,70 @@ v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/li
 commit](https://img.shields.io/github/last-commit/Raiservi/rminkav5)](https://github.com/Raiservi/rminkav5/commits/main)
 <br>
 [![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.18909175-blue)](https://zenodo.org/records/18909175)
-[![Citation](https://img.shields.io/badge/Citation-Zenodo-blue)](https://zenodo.org/records/18909175)
 [![Cited
 by](https://img.shields.io/badge/Cited%20by-0-lightgrey)](https://app.dimensions.ai/details/publication/pub.1165278788)
+[![Code of
+Conduct](https://img.shields.io/badge/Code%20of%20Conduct-v2.1-ff69b4.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)
+<br> [![GitHub package
+version](https://img.shields.io/github/r-package/v/Raiservi/rminkav5)](https://github.com/Raiservi/rminkav5)
+[![GitHub
+Downloads](https://img.shields.io/github/downloads/Raiservi/rminkav5/total)](https://github.com/Raiservi/rminkav5/releases)
 [![GitHub
 Contributors](https://img.shields.io/github/contributors/Raiservi/rminkav5)](https://github.com/Raiservi/rminkav5/graphs/contributors)
 <!-- badges: end -->
+
+## Usage
+
+Minka is a citizen science app built for recording, organizing and
+sharing naturalistic observations of animals and plants. It allows
+anyone to become a researcher and that the observations we make serve
+for scientific use. Minka also allows users to create their own
+projects. The link to access Minka’s website is <https://minka-sdg.org/>
+
+The goals of the `rminka` package are:
+
+1.  Directly access the data stored in Minka to be able to process them
+    with R through the API.
+
+2.  Treat the data to be able to use them directly with other packages
+    such as `vegan` or `dismo`.
+
+## Overview
+
+`rminkav5` is a toolkit for interacting with the Minka API, providing a
+consistent set of functions to help you query and retrieve biodiversity
+data. The package’s functions are grouped by the type of data they
+return:
+
+**a) Project Queries:** A set of complementary functions to find
+projects and their associated observations. \* `mnk_proj_byname()` finds
+a project’s ID using an approximate project name. \* `mnk_proj_info()`
+retrieves detailed project information using its known ID. \*
+`mnk_proj_obs()` fetches all observations for a specific year within
+that project.
+
+**b) User Queries:** Functions to find users and their contributed
+observations. \* `mnk_user_byname()` finds a user’s ID from their
+approximate login name. \* `mnk_user_obs()` retrieves all observations
+contributed by that user for a given year.
+
+**c) Place Queries:** Functions to find places and retrieve their
+spatial data. \* `mnk_places_byname()` finds the ID for a location using
+an approximate place name. \* `mnk_place_sf()` returns the `sf` geometry
+for a place, ready for plotting with packages like `ggplot2` or
+`leaflet`.
+
+**d) Observation Queries:** A variety of functions to fetch observation
+data based on different parameters. \* `mnk_obs_id()` retrieves a single
+observation’s complete data using its unique ID. \* `mnk_obs()` fetches
+observations based on various parameters for a full year, a specific
+month, or a single day. \* `mnk_obs_bydays()` retrieves all observations
+within a date range in the same year.
+
+These functions are designed to be used together. For queries that span
+multiple years, you can easily loop through the years of interest, run
+the appropriate function, and then combine the resulting tibbles with
+`dplyr::bind_rows()`.
 
 ## Installation
 
@@ -32,26 +90,6 @@ You can install the development version of rminkav5 from
 # install.packages("pak")
 pak::pak("Raiservi/rminkav5")
 ```
-
-## Usage
-
-Minka is a citizen science app built for recording, organizing and
-sharing naturalistic observations of animals and plants. It allows
-anyone to become a researcher and that the observations we make serve
-for scientific use. Minka also allows users to create their own
-projects.
-
-The link to access Minka’s website is
-
-<https://minka-sdg.org/>
-
-The goals of the `rminka` package are:
-
-1.  Directly access the data stored in Minka to be able to process them
-    with R through the API.
-
-2.  Treat the data to be able to use them directly with other packages
-    such as `vegan` or `dismo`.
 
 ## Using rminka
 
@@ -75,3 +113,13 @@ There are two main places to get help with `rminka`:
     answers to common R questions. It is also a great place to get help,
     once you have created a reproducible example that illustrates your
     problem.
+
+If you encounter a clear bug, please file an issue with a minimal
+reproducible example on
+[GitHub](https://github.com/tidyverse/dplyr/issues).
+
+## Code of conduct
+
+Please note that this project is released following a [Code of
+Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree
+to abide by its terms.
