@@ -12,6 +12,8 @@ coverage](https://codecov.io/gh/Raiservi/rminkav5/graph/badge.svg)](https://app.
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License: GPL
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![GitHub last
+commit](https://img.shields.io/github/last-commit/Raiservi/rminkav5)](https://github.com/Raiservi/rminkav5/commits/main)
 <!-- badges: end -->
 
 ## Installation

@@ -1,7 +1,7 @@
 Package: rminkav5
 Type: Package
 Title: GET DIRECT ACCES TO MINKA DATA
-Version: 0.1.0
+Version: 1.0.0
 Author: Ramon Servitje
 Maintainer: Ramon Servitje <rservitje25@gmail.com>
 Description: Get direct access to the data stored in Minka, 
