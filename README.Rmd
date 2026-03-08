@@ -13,15 +13,22 @@ knitr::opts_chunk$set(
 )
 ```
 
-# rminkav5
+# rminkav5 <a href="https://dplyr.tidyverse.org"><img src="man/figures/logo1.png" align="right" height="138" /></a>
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/Raiservi/rminkav5/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Raiservi/rminkav5/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/gh/Raiservi/rminkav5/graph/badge.svg)](https://app.codecov.io/gh/Raiservi/rminkav5)
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-green.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Raiservi/rminkav5)](https://github.com/Raiservi/rminkav5/commits/main)
+<br>
+[![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.18909175-blue)](https://zenodo.org/records/18909175)
+[![Citation](https://img.shields.io/badge/Citation-Zenodo-blue)](https://zenodo.org/records/18909175)
+[![Cited by](https://img.shields.io/badge/Cited%20by-0-lightgrey)](https://app.dimensions.ai/details/publication/pub.1165278788)
+[![GitHub Contributors](https://img.shields.io/github/contributors/Raiservi/rminkav5)](https://github.com/Raiservi/rminkav5/graphs/contributors)
 <!-- badges: end -->
+
+
 
 ## Installation
 
