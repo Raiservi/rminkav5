@@ -75,7 +75,6 @@ mock_httr_GET_pings <- function(url = NULL, path = NULL, query = NULL,...) {
 
 # --- TEST SET ---
 
-# Test de mnk_proj_obs (validación de entrada)
 test_that("mnk_proj_obs handles invalid input", {
   expect_error(mnk_proj_obs(project_id = NULL, year = 2025), "You must provide 'project_id' and 'year'")
   expect_error(mnk_proj_obs(project_id = 123, year = NULL), "You must provide 'project_id' and 'year'")
@@ -84,7 +83,6 @@ test_that("mnk_proj_obs handles invalid input", {
   expect_error(suppressWarnings(mnk_proj_obs(project_id = 123, year = 2025, month = "invalid")), "'month' must be a number between 1 and 12.")
 })
 
-# Test para el modo mensual de mnk_proj_obs
 test_that("mnk_proj_obs monthly mode downloads data", {
   mock_download_month_data <- function(project_id, year, current_month) {
     if (project_id == 123 && year == 2025 && current_month == 1) {
@@ -93,47 +91,32 @@ test_that("mnk_proj_obs monthly mode downloads data", {
     return(tibble::tibble())
   }
 
-  local_mocked_bindings(
-    download_month_data = mock_download_month_data,
-    .package = "rminkav5"
-  )
+  local_mocked_bindings(download_month_data = mock_download_month_data, .package = "rminkav5")
   {
     result <- suppressMessages(mnk_proj_obs(project_id = 123, year = 2025, month = 1))
-
     expect_s3_class(result, "tbl_df")
     expect_equal(nrow(result), 500)
   }
 })
 
-# Test para el modo anual - sin resultados
 test_that("mnk_proj_obs annual mode handles no yearly results", {
-  local_mocked_bindings(
-    GET = mock_httr_GET_pings,
-    .package = "httr"
-  )
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
   {
     result <- suppressMessages(mnk_proj_obs(project_id = 999, year = 2030))
-
     expect_s3_class(result, "tbl_df")
     expect_equal(nrow(result), 0)
   }
 })
 
-# Test para el modo anual - error en el ping
 test_that("mnk_proj_obs annual mode handles yearly ping HTTP error", {
-  local_mocked_bindings(
-    GET = mock_httr_GET_pings,
-    .package = "httr"
-  )
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
   {
     result <- suppressMessages(mnk_proj_obs(project_id = "400_http_error_anual", year = 2025))
-
     expect_s3_class(result, "tbl_df")
     expect_equal(nrow(result), 0)
   }
 })
 
-# Test para el modo anual con resultados
 test_that("mnk_proj_obs annual mode processes monthly data correctly", {
   mock_download_month_data <- function(project_id, year, current_month) {
     if (project_id == 123 && year == 2025) {
@@ -143,18 +126,11 @@ test_that("mnk_proj_obs annual mode processes monthly data correctly", {
     return(tibble::tibble())
   }
 
-  local_mocked_bindings(
-    GET = mock_httr_GET_pings,
-    .package = "httr"
-  )
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
   {
-    local_mocked_bindings(
-      download_month_data = mock_download_month_data,
-      .package = "rminkav5"
-    )
+    local_mocked_bindings(download_month_data = mock_download_month_data, .package = "rminkav5")
     {
       result <- suppressMessages(mnk_proj_obs(project_id = 123, year = 2025))
-
       expect_s3_class(result, "tbl_df")
       expect_equal(nrow(result), 300)
       expect_true(all(c(1, 2) %in% unique(result$month)))
@@ -162,31 +138,173 @@ test_that("mnk_proj_obs annual mode processes monthly data correctly", {
   }
 })
 
-# Test para download_month_data (error en el ping mensual)
 test_that("download_month_data handles monthly ping HTTP error", {
-  local_mocked_bindings(
-    GET = mock_httr_GET_pings,
-    .package = "httr"
-  )
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
   {
     result <- suppressMessages(download_month_data(project_id = "400_http_error_mensual", year = 2025, current_month = 4))
-
     expect_s3_class(result, "tbl_df")
     expect_equal(nrow(result), 0)
   }
 })
 
-# NUEVO TEST: download_month_data (sin resultados)
 test_that("download_month_data handles no monthly records", {
-  local_mocked_bindings(
-    GET = mock_httr_GET_pings,
-    .package = "httr"
-  )
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
   {
-    # El mes 3 para project_id=123 está configurado para devolver 0 resultados
     result <- suppressMessages(download_month_data(project_id = 123, year = 2025, current_month = 3))
-
     expect_s3_class(result, "tbl_df")
     expect_equal(nrow(result), 0)
+  }
+})
+
+test_that("download_month_data handles <10000 monthly records", {
+  mock_get_minka_obs <- function(params, meta = FALSE, total_res = NULL) {
+    return(tibble(id = 1:total_res))
+  }
+
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
+  {
+    local_mocked_bindings(get_minka_obs = mock_get_minka_obs, .package = "rminkav5")
+    {
+      result <- suppressMessages(download_month_data(project_id = 123, year = 2025, current_month = 1))
+      expect_s3_class(result, "tbl_df")
+      expect_equal(nrow(result), 500)
+    }
+  }
+})
+
+test_that("download_month_data handles >10000 monthly records by day", {
+  mock_get_minka_obs <- function(params, meta = FALSE, total_res = NULL) {
+    if (!is.null(params$day)) {
+      return(tibble(id = 1:100, day = params$day))
+    }
+    return(tibble::tibble())
+  }
+
+  local_mocked_bindings(GET = mock_httr_GET_pings, .package = "httr")
+  {
+    local_mocked_bindings(get_minka_obs = mock_get_minka_obs, .package = "rminkav5")
+    {
+      result <- suppressMessages(download_month_data(project_id = 123, year = 2025, current_month = 2))
+      expect_s3_class(result, "tbl_df")
+      expect_equal(nrow(result), 28 * 100)
+      expect_equal(length(unique(result$day)), 28)
+    }
+  }
+})
+
+test_that("get_minka_obs handles pagination", {
+  mock_GET_pagination <- function(url, path, query, ...) {
+    page <- query$page
+    total_results_mock <- 500
+    results_this_page <- list()
+
+    if (page == 1) {
+      results_this_page <- lapply(1:200, function(i) list(id = i))
+    } else if (page == 2) {
+      results_this_page <- lapply(201:400, function(i) list(id = i))
+    } else if (page == 3) {
+      results_this_page <- lapply(401:500, function(i) list(id = i))
+    }
+
+    response_content <- jsonlite::toJSON(list(total_results = total_results_mock, page = page, per_page = 200, results = results_this_page), auto_unbox = TRUE)
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+  }
+
+  local_mocked_bindings(GET = mock_GET_pagination, .package = "httr")
+  {
+    local_mocked_bindings(process_minka_results = function(all_results) { purrr::map_dfr(all_results, ~tibble(id = .x$id)) }, .package = "rminkav5")
+    {
+      result <- suppressMessages(get_minka_obs(params = list(project_id = "test"), total_res = 500))
+      expect_s3_class(result, "tbl_df")
+      expect_equal(nrow(result), 500)
+    }
+  }
+})
+
+test_that("get_minka_obs returns metadata when meta = TRUE", {
+  mock_GET_meta_test <- function(url, path, query, ...) {
+    if (!is.null(query$per_page) && query$per_page == 1) {
+      response_content <- '{"total_results": 250, "page": 1, "per_page": 1, "results": [{"id": 1}]}'
+      return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+    }
+    page <- query$page
+    total_results_mock <- 250
+    if (page == 1) { results_this_page <- lapply(1:200, function(i) list(id = i)) }
+    else if (page == 2) { results_this_page <- lapply(201:250, function(i) list(id = i)) }
+    else { results_this_page <- list() }
+    response_content <- jsonlite::toJSON(list(total_results = total_results_mock, page = page, per_page = 200, results = results_this_page), auto_unbox = TRUE)
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+  }
+
+  local_mocked_bindings(GET = mock_GET_meta_test, .package = "httr")
+  {
+    local_mocked_bindings(process_minka_results = function(all_results) { purrr::map_dfr(all_results, ~tibble(id = .x$id)) }, .package = "rminkav5")
+    {
+      result <- suppressMessages(get_minka_obs(params = list(project_id = "test_meta"), meta = TRUE))
+      expect_type(result, "list")
+      expect_true(all(c("meta", "data") %in% names(result)))
+      expect_s3_class(result$data, "tbl_df")
+      expect_equal(nrow(result$data), 250)
+      expect_equal(result$meta$found, 250)
+      expect_equal(result$meta$returned, 250)
+    }
+  }
+})
+
+test_that("get_minka_obs handles internal ping HTTP error", {
+  mock_GET_internal_ping_error <- function(url, path, query, ...) {
+    if (!is.null(query$per_page) && query$per_page == 1) {
+      return(structure(list(status_code = 400L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw('{"error": "Bad Request on ping"}')), class = c("response", "handle")))
+    }
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw('{"results":[]}')), class = c("response", "handle")))
+  }
+
+  local_mocked_bindings(GET = mock_GET_internal_ping_error, .package = "httr")
+  {
+    result <- suppressMessages(get_minka_obs(params = list(project_id = "test")))
+    expect_s3_class(result, "tbl_df")
+    expect_equal(nrow(result), 0)
+  }
+})
+
+# NUEVO TEST: get_minka_obs (ping interno y warning > 10k)
+test_that("get_minka_obs handles internal ping and >10k results warning", {
+  # Mock de httr::GET que devuelve >10k en el ping y luego solo descarga hasta el límite
+  mock_GET_large_dataset <- function(url, path, query, ...) {
+    per_page <- query$per_page
+
+    # Si es el PING inicial
+    if (!is.null(per_page) && per_page == 1) {
+      response_content <- '{"total_results": 11000, "page": 1, "per_page": 1, "results": [{"id": 1}]}'
+      return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+    }
+
+    # Si es la descarga de datos
+    page <- query$page
+    # Simular que cada página devuelve 200 resultados
+    results_this_page <- lapply(1:200, function(i) list(id = ((page - 1) * 200) + i))
+    response_content <- jsonlite::toJSON(list(total_results = 11000, page = page, per_page = 200, results = results_this_page), auto_unbox = TRUE)
+
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+  }
+
+  local_mocked_bindings(GET = mock_GET_large_dataset, .package = "httr")
+  {
+    local_mocked_bindings(
+      process_minka_results = function(all_results) {
+        purrr::map_dfr(all_results, ~tibble(id = .x$id))
+      },
+      .package = "rminkav5"
+    )
+    {
+      # Llamar sin total_res para forzar el ping interno
+      msgs <- capture_messages({
+        result <- get_minka_obs(params = list(project_id = "large_dataset"))
+      })
+
+      expect_match(msgs, "WARNING: The query found 11000 records. The API limits the download to the first few 10000.")
+      expect_s3_class(result, "tbl_df")
+      expect_equal(nrow(result), 10000) # La función debe limitar la descarga a API_MAX_RESULTS
+    }
   }
 })
