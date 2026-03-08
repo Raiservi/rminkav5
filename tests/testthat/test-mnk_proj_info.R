@@ -1,103 +1,154 @@
 library(testthat)
-library(rminkav5)
+library(mockery)
 library(httr)
-library(mockery) # Asegúrate de que este paquete está instalado
+library(jsonlite)
+library(dplyr)
+library(tibble)
 
-# --- Función auxiliar para crear respuestas mock de httr ---
-# La creamos una vez para no repetir código en cada test
-create_mock_response <- function(json_content, status_code = 200L, url = "mocked_url") {
-  response_obj <- list(
-    url = url,
-    status_code = status_code,
-    headers = list("Content-Type" = "application/json"),
-    content = charToRaw(json_content)
-  )
-  class(response_obj) <- c("response", "handle")
-  return(response_obj)
-}
+# Asegúrate de que tu función esté cargada.
+# source("R/mnk_proj_info.R")
 
-# --- Test para argumentos inválidos ---
-test_that("mnk_proj_info handles invalid arguments", {
-  # No necesitamos mockear aquí, ya que la función debe fallar antes de la llamada a la API
-  expect_error(
-    mnk_proj_info(project_id = NULL, grpid = NULL),
-    "You must provide either 'project_id' or 'grpid'. Both cannot be NULL."
-  )
+# --- TEST SET ---
 
-  # --- ESTA ES LA LÍNEA QUE HA CAMBIADO ---
-  expect_error(
-    mnk_proj_info(project_id = list(a = 1)),
-    "'project_id' must be a single character string or number."
-  )
+test_that("mnk_proj_info handles invalid input", {
+  expect_error(mnk_proj_info(project_id = NULL, grpid = NULL), "You must provide either 'project_id' or 'grpid'")
+  expect_error(mnk_proj_info(project_id = c("1", "2")), "'project_id' must be a single character string or number.")
+  expect_error(mnk_proj_info(grpid = c("group1", "group2")), "'grpid' must be a single character string or number.")
 })
 
-# --- Test para respuesta válida de la API (caso completo) ---
-test_that("mnk_proj_info processes a full, valid API response", {
-  mock_json <- '{
-    "results": [{
-      "id": "proj123", "title": "Proyecto Ejemplo Completo", "description": "Una descripción detallada.",
-      "slug": "proyecto-ejemplo-completo", "created_at": "2023-01-01T12:00:00Z",
-      "user": { "id": 1, "login": "usuario1", "name": "Usuario Uno" },
-      "admins": [{"id": 10, "login": "admin1", "name": "Admin Uno"}, {"id": 11, "login": "admin2", "name": "Admin Dos"}],
-      "user_ids": [101, 102, 103]
-    }]
+test_that("mnk_proj_info successfully retrieves project by ID", {
+  mock_response_content <- '{
+    "results": [ { "id": 420, "title": "Test Project by ID", "user": {"id": 1}, "admins": [], "user_ids": [1] } ]
   }'
-  mock_response <- create_mock_response(mock_json)
-
-  # stub() intercepta la llamada a httr::GET dentro de mnk_proj_info
-  stub(mnk_proj_info, "httr::GET", mock_response)
-
-  result <- mnk_proj_info(project_id = "proj123")
-
-  expect_type(result, "list")
-  expect_named(result, c("title", "description", "slug", "created_at", "id", "user_info", "admins_info", "user_ids_list", "subscrib_users"))
-  expect_equal(result$title, "Proyecto Ejemplo Completo")
-  expect_equal(result$id, "proj123")
-  expect_s3_class(result$admins_info, "tbl_df")
-  expect_equal(nrow(result$admins_info), 2)
-  expect_equal(result$subscrib_users, 3)
+  mock_GET <- function(url, path, query,...) {
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(mock_response_content)), class = c("response", "handle")))
+  }
+  local_mocked_bindings(GET = mock_GET,.package = "httr")
+  {
+    result <- mnk_proj_info(project_id = 420)
+    expect_type(result, "list")
+    expect_equal(result$id, 420)
+  }
 })
 
-# --- Test para API no encuentra el proyecto ---
-test_that("mnk_proj_info handles 'not found' response", {
-  mock_response <- create_mock_response('{"results": []}')
-
-  stub(mnk_proj_info, "httr::GET", mock_response)
-
-  expect_message(result <- mnk_proj_info(project_id = "not_found_id"), "No project details found")
-  expect_null(result)
-})
-
-# --- Test para API devuelve un error HTTP ---
-test_that("mnk_proj_info handles API HTTP error", {
-  mock_response <- create_mock_response('{"error": "server exploded"}', status_code = 500L)
-
-  stub(mnk_proj_info, "httr::GET", mock_response)
-
-  expect_message(result <- mnk_proj_info(project_id = "error_id"), regexp = "Minka API request failed.*Status code: 500")
-  expect_null(result)
-})
-
-# --- Test para proyecto sin campos opcionales ---
-test_that("mnk_proj_info handles missing optional fields", {
-  mock_json <- '{
-    "results": [{
-      "id": "proj_minimal", "title": "Proyecto Minimalista", "description": null,
-      "slug": "proyecto-minimal", "created_at": "2023-01-01T12:00:00Z",
-      "user": {"id": 1, "login": "usuario1", "name": "Usuario Uno"},
-      "admins": [], "user_ids": null
-    }]
+test_that("mnk_proj_info successfully retrieves project by grpid", {
+  mock_response_content <- '{
+    "results": [ { "id": 888, "title": "Test Project by Group", "user": {"id": 1}, "admins": [], "user_ids": [1] } ]
   }'
-  mock_response <- create_mock_response(mock_json)
-
-  stub(mnk_proj_info, "httr::GET", mock_response)
-
-  result <- mnk_proj_info(project_id = "proj_minimal")
-
-  expect_type(result, "list")
-  expect_true(is.na(result$description))
-  expect_s3_class(result$admins_info, "tbl_df")
-  expect_equal(nrow(result$admins_info), 0)
-  expect_equal(result$user_ids_list, integer(0))
-  expect_equal(result$subscrib_users, 0)
+  mock_GET_by_q <- function(url, path, query,...) {
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(mock_response_content)), class = c("response", "handle")))
+  }
+  local_mocked_bindings(GET = mock_GET_by_q,.package = "httr")
+  {
+    result <- mnk_proj_info(grpid = "test-group-slug")
+    expect_type(result, "list")
+    expect_equal(result$id, 888)
+  }
 })
+
+test_that("mnk_proj_info handles network errors", {
+  mock_GET_network_error <- function(url, path, query,...) { stop("Failed to connect") }
+  local_mocked_bindings(GET = mock_GET_network_error,.package = "httr")
+  {
+    expect_message(result <- mnk_proj_info(project_id = 123), "Network error")
+    expect_null(result)
+  }
+})
+
+test_that("mnk_proj_info handles empty or null API responses", {
+  mock_GET_empty <- function(url, path, query,...) {
+    response_content <- if (query$id == "empty") "" else "null"
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+  }
+  local_mocked_bindings(GET = mock_GET_empty,.package = "httr")
+  {
+    expect_message(result_empty <- mnk_proj_info(project_id = "empty"), "API returned an empty or null response")
+    expect_null(result_empty)
+    expect_message(result_null <- mnk_proj_info(project_id = "null_string"), "API returned an empty or null response")
+    expect_null(result_null)
+  }
+})
+
+test_that("mnk_proj_info handles missing fields in API response", {
+  mock_response_missing_fields <- '{
+    "results": [ { "id": 777, "title": "Missing Data", "description": null, "user": null, "admins": null, "user_ids": null } ]
+  }'
+  mock_GET <- function(url, path, query,...) {
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(mock_response_missing_fields)), class = c("response", "handle")))
+  }
+  local_mocked_bindings(GET = mock_GET,.package = "httr")
+  {
+    result <- mnk_proj_info(project_id = 777)
+    expect_true(is.na(result$description))
+    expect_true(is.na(result$slug))
+    expect_true(is.na(result$user_info$id))
+    expect_equal(nrow(result$admins_info), 0)
+    expect_length(result$user_ids_list, 0)
+  }
+})
+
+test_that("mnk_proj_info handles API HTTP errors", {
+  mock_GET_http_error <- function(url, path, query,...) {
+    return(structure(list(status_code = 404L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw('{}')), class = c("response", "handle")))
+  }
+  local_mocked_bindings(GET = mock_GET_http_error,.package = "httr")
+  {
+    expect_message(result <- mnk_proj_info(project_id = "not_found"), "Minka API request failed")
+    expect_null(result)
+  }
+})
+
+test_that("mnk_proj_info handles null or empty 'results' field", {
+  mock_GET_no_results <- function(url, path, query,...) {
+    if (query$id == "no_results_field") {
+      response_content <- '{"total_results": 0, "page": 1}'
+    } else {
+      response_content <- '{"total_results": 0, "page": 1, "results": []}'
+    }
+    return(structure(list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(response_content)), class = c("response", "handle")))
+  }
+  local_mocked_bindings(GET = mock_GET_no_results,.package = "httr")
+  {
+    expect_message(result_no_field <- mnk_proj_info(project_id = "no_results_field"), "No project details found")
+    expect_null(result_no_field)
+    expect_message(result_empty_array <- mnk_proj_info(project_id = "empty_array"), "No project details found")
+    expect_null(result_empty_array)
+  }
+})
+
+# NUEVO TEST: 'admins' no es nulo
+test_that("mnk_proj_info processes 'admins' field correctly", {
+  # Mock con un campo 'admins' que contiene datos
+  mock_response_with_admins <- '{
+    "results": [
+      {
+        "id": 999,
+        "title": "Project with Admins",
+        "user": null,
+        "admins": [
+          {"id": 10, "login": "admin1", "name": "Admin One"},
+          {"id": 11, "login": "admin2", "name": "Admin Two"}
+        ],
+        "user_ids": []
+      }
+    ]
+  }'
+
+  mock_GET <- function(url, path, query,...) {
+    return(structure(
+      list(status_code = 200L, headers = list('Content-Type' = "application/json; charset=utf-8"), content = charToRaw(mock_response_with_admins)),
+      class = c("response", "handle")
+    ))
+  }
+
+  local_mocked_bindings(GET = mock_GET,.package = "httr")
+  {
+    result <- mnk_proj_info(project_id = 999)
+
+    expect_s3_class(result$admins_info, "tbl_df")
+    expect_equal(nrow(result$admins_info), 2)
+    expect_equal(result$admins_info$id, c(10, 11))
+    expect_equal(result$admins_info$login, c("admin1", "admin2"))
+  }
+})
+

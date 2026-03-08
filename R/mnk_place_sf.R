@@ -55,12 +55,6 @@ mnk_place_sf <- function(id) {
     )
   })
 
-  if (is.null(final_tibble) || nrow(final_tibble) == 0) {
-    message("No places found for your query.")
-    return(invisible(NULL))
-  }
-
-
   sf_object <- tibble::as_tibble(final_tibble) %>%
     dplyr::mutate(
       sf_geometry = purrr::map(geojson_string, function(raw_string) {
